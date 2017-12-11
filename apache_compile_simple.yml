@@ -65,4 +65,3 @@
    - name: Re-try connfiguring Apache
      shell: /usr/src/httpd-2.4.29/configure --prefix=/usr/local --with-included-apr
      when: "proc_status.rc != 0"
-...
