@@ -1,0 +1,67 @@
+---
+- hosts: system2*
+  tasks:
+   - name: Download the Apache source file
+     get_url:
+         url: http://www-us.apache.org/dist//httpd/httpd-2.4.29.tar.gz 
+         dest: /usr/src/
+     tags: download_source
+   - name: Extract the source file 
+     unarchive:
+         src: /usr/src/httpd-2.4.29.tar.gz 
+         dest: /usr/src/
+         remote_src: yes
+     tags: extract_source
+   - name: configure Apache
+     shell: /usr/src/httpd-2.4.29/configure --prefix=/usr/local --with-included-apr
+     register: proc_status
+     ignore_errors: true
+     tags: configure
+   - name: make apache
+     shell: chdir=/usr/src/httpd-2.4.29/ make
+     tags: make
+   - name: make install apache
+     shell: chdir=chdir=/usr/src/httpd-2.4.29/ make install
+     tags: make_install
+   - name: Install_dependencies
+     get_url: url={{ item }} dest=/usr/src/
+     with_items:
+      - http://www-eu.apache.org/dist//apr/apr-1.6.3.tar.gz  
+      - http://www-eu.apache.org/dist//apr/apr-util-1.6.1.tar.gz
+     listen: "apr" 
+     when: "proc_status.rc != 0"
+   - name: ex_apr_dir_exist
+     file:
+       path: /usr/src/httpd-2.4.29/srclib/apr
+       mode: 755
+       state: directory 
+     register: dir1_status 
+     listen: "apr"
+     when: "proc_status.rc != 0"
+   - name: Unarchive the apr build   
+     unarchive:
+        src: /usr/src/apr-1.6.3.tar.gz
+        dest: /usr/src/httpd-2.4.29/srclib/apr
+        remote_src: yes 
+     register: zip1_status 
+     listen: "apr" 
+     when: "proc_status.rc != 0"
+   - name: Make apr-util directory
+     file:
+       path: /usr/src/httpd-2.4.29/srclib/apr-util
+       mode: 755
+       state: directory
+     register: dir2_status
+     listen: "apr-util"
+     when: "proc_status.rc != 0"
+   - name: Unarchive the apr-utils build
+     unarchive:
+       src: /usr/src/apr-util-1.6.1.tar.gz
+       dest: /usr/src/httpd-2.4.29/srclib/apr-util
+       remote_src: yes
+     register: zip2_status 
+     listen: "apr-util"
+     when: "proc_status.rc != 0"
+   - name: Re-try connfiguring Apache
+     shell: /usr/src/httpd-2.4.29/configure --prefix=/usr/local --with-included-apr
+     when: "proc_status.rc != 0"
